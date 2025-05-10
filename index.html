@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Talking Kid Agent</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Kalam:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Kalam', cursive;
+        }
+        .chat-container {
+            max-width: 800px;
+            margin: auto;
+            border-radius: 1rem;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+            background-color: white; /* Added background color for better contrast */
+        }
+        .message-bubble {
+            border-radius: 1.25rem;
+            padding: 0.75rem 1.25rem;
+            margin-bottom: 0.5rem;
+            display: inline-block;
+            clear: both;
+        }
+        .user-message {
+            background-color: #dcf8c6; /* Light green for user messages */
+            color: #222;
+            float: right;
+            border-top-right-radius: 0.25rem; /* Slightly less rounded on the right */
+        }
+        .agent-message {
+            background-color: #e0f7fa; /* Light cyan for agent messages */
+            color: #222;
+            float: left;
+            border-top-left-radius: 0.25rem; /* Slightly less rounded on the left */
+        }
+        .input-area {
+            display: flex;
+            align-items: center;
+            padding: 0.75rem;
+            border-top: 1px solid #e0e0e0;
+        }
+        .text-input {
+            flex: 1;
+            border-radius: 1.25rem;
+            padding: 0.75rem;
+            border: 1px solid #e0e0e0;
+            margin-right: 0.75rem;
+            font-family: 'Kalam', cursive; /* Use the fun font in input too */
+        }
+        .text-input:focus {
+            outline: none;
+            border-color: #4fc3f7; /* Highlight on focus */
+            box-shadow: 0 0 0 3px rgba(64, 153, 255, 0.19);
+        }
+        .send-button {
+            border-radius: 1.25rem;
+            padding: 0.75rem 1.5rem;
+            background-color: #4fc3f7; /* Cheerful blue */
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            font-family: 'Kalam', cursive; /* Use the fun font for the button */
+        }
+        .send-button:hover {
+            background-color: #45a7d3; /* Darker shade on hover */
+        }
+        .send-button:disabled {
+            background-color: #b0bec5; /* Grey out when disabled */
+            cursor: not-allowed;
+        }
+        #audio-visualizer {
+            width: 100%;
+            height: 30px;
+            margin-top: 0.75rem;
+            border-radius: 0.75rem;
+            background-color: #f0f4c3; /* Light yellow for the visualizer */
+            display: none; /* Initially hidden */
+        }
+        .recording-animation {
+            border: 4px solid #f44336; /* Red recording border */
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-yellow-100 to-pink-100 min-h-screen flex flex-col">
+    <div class="chat-container flex-grow flex flex-col">
+        <div class="chat-messages flex-grow p-4 overflow-y-auto" id="chat-messages">
+            </div>
+        <div id="audio-visualizer"></div>
+        <div class="input-area">
+            <input type="text" id="text-input" class="text-input" placeholder="Type your message..." disabled>
+            <button id="send-button" class="send-button" disabled>Send</button>
+        </div>
+    </div>
+
+    <script>
+        const chatMessages = document.getElementById('chat-messages');
+        const textInput = document.getElementById('text-input');
+        const sendButton = document.getElementById('send-button');
+        const audioVisualizer = document.getElementById('audio-visualizer');
+
+        let isRecording = false;
+        let mediaRecorder;
+        let audioChunks = [];
+        let speechRecognition;
+        let previousResponse = "";
+        const apiKey = proces.Env.API_KEY; // **Replace with your actual API key**
+
+        // --- Helper Functions ---
+
+        /**
+         * Adds a message to the chat interface.
+         * @param {string} message - The text of the message.
+         * @param {string} sender - "user" or "agent".
+         */
+        function addMessage(message, sender) {
+            const messageElement = document.createElement('div');
+            messageElement.classList.add('message-bubble', `${sender}-message`);
+            messageElement.textContent = message;
+            chatMessages.appendChild(messageElement);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        /**
+         * Handles the agent's response using an API.
+         * @param {string} userInput - The user's input.
+         */
+/**
+ * Handles the agent's response using the Gemini API.
+ * @param {string} userInput - The user's input.
+ */
+
+ async function agentResponse(userInput) {
+    let response = "";
+    
+    try {
+        // Using the direct Gemini API URL with your API key
+        // I see your API key in the error message - make sure to secure this in production!
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+        
+        // Create the data structure that the Gemini API expects
+        const requestData = {
+            contents: [{
+                parts: [{ text: userInput }]
+            }]
+        };
+        
+        console.log("Sending data to Gemini API:", requestData);
+        
+        // The Gemini API expects JSON format with application/json content type
+        const apiResponse = await fetch(apiUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(requestData)
+        });
+        
+        console.log("API Response status:", apiResponse.status);
+        
+        if (!apiResponse.ok) {
+            const errorText = await apiResponse.text();
+            console.error(`API error (${apiResponse.status}):`, errorText);
+            throw new Error(`API request failed with status: ${apiResponse.status}`);
+        }
+        
+        // Get the response as JSON directly
+        const data = await apiResponse.json();
+        console.log("Parsed API Response Data:", data);
+        
+        // Extract the response text based on Gemini API structure
+        if (data && data.candidates && data.candidates[0]?.content?.parts?.[0]?.text) {
+            response = data.candidates[0].content.parts[0].text;
+        } else {
+            console.error("Response doesn't match expected structure:", data);
+            response = "I received a response but couldn't understand it properly.";
+        }
+        
+        // Make sure the response is appropriate for kids
+        response = makeKidFriendly(response);
+
+    } catch (error) {
+        console.error("Error fetching or processing API response:", error);
+        response = "I'm having a little trouble understanding right now. Can you try again?";
+    }
+
+    // Display the response with a slight delay
+    setTimeout(() => {
+        addMessage(response, 'agent');
+        previousResponse = response;
+        if (speechRecognition) {
+            startSpeechRecognition();
+        }
+    }, 1000);
+}
+
+/**
+         * Placeholder function to make API responses kid-friendly.
+         * You will need to adapt this function to your specific needs
+         * and the nature of the API responses.
+         */
+        function makeKidFriendly(text) {
+            //  Very basic example:  Replace adult vocabulary with simpler synonyms.
+            text = text.replace(/adult/gi, "grown-up");
+            text = text.replace(/complicated/gi, "tricky");
+            text = text.replace(/explain/gi, "tell me about");
+            //  Add more rules as needed.  Consider using a library for this.
+            return text;
+        }
+
+        // --- Speech Recognition Functions (Web Speech API) ---
+        /**
+         * Initializes and starts speech recognition.
+         */
+        function startSpeechRecognition() {
+            if ('webkitSpeechRecognition' in window) {
+                speechRecognition = new webkitSpeechRecognition();
+                speechRecognition.continuous = false;
+                speechRecognition.lang = 'en-US';
+                speechRecognition.interimResults = false;
+
+                speechRecognition.onstart = () => {
+                    isRecording = true;
+                    sendButton.textContent = "Listening...";
+                    sendButton.disabled = true;
+                    textInput.disabled = true;
+                    audioVisualizer.style.display = 'block';
+                    audioVisualizer.classList.add('recording-animation');
+                };
+
+                speechRecognition.onresult = (event) => {
+                    const transcript = event.results[0][0].transcript;
+                    addMessage(transcript, 'user');
+                    agentResponse(transcript);
+                };
+
+                speechRecognition.onend = () => {
+                    isRecording = false;
+                    sendButton.textContent = "Send";
+                    sendButton.disabled = false;
+                    textInput.disabled = false;
+                    audioVisualizer.style.display = 'none';
+                    audioVisualizer.classList.remove('recording-animation');
+                };
+
+                speechRecognition.onerror = (event) => {
+                    console.error("Speech Recognition Error:", event.error);
+                    isRecording = false;
+                    sendButton.textContent = "Send";
+                    sendButton.disabled = false;
+                    textInput.disabled = false;
+                    audioVisualizer.style.display = 'none';
+                    alert("Sorry, I couldn't understand that. Please try again.");
+                };
+
+                speechRecognition.start();
+            } else {
+                alert("Speech recognition is not supported in this browser.");
+                textInput.disabled = false;
+                sendButton.disabled = false;
+            }
+        }
+
+        /**
+         * Stops speech recognition.
+         */
+        function stopSpeechRecognition() {
+            if (speechRecognition) {
+                speechRecognition.stop();
+                isRecording = false;
+                sendButton.textContent = "Send";
+                sendButton.disabled = false;
+                textInput.disabled = false;
+                audioVisualizer.style.display = 'none';
+                audioVisualizer.classList.remove('recording-animation');
+            }
+        }
+
+        // --- Event Listeners ---
+
+        // Send message on button click
+        sendButton.addEventListener('click', () => {
+            if (isRecording) {
+                stopSpeechRecognition();
+            } else {
+                const message = textInput.value.trim();
+                if (message !== "") {
+                    addMessage(message, 'user');
+                    textInput.value = '';
+                    agentResponse(message);
+                }
+            }
+        });
+
+        // Send message on Enter key press
+        textInput.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') {
+                if (isRecording) {
+                    stopSpeechRecognition();
+                } else {
+                    const message = textInput.value.trim();
+                    if (message !== "") {
+                        addMessage(message, 'user');
+                        textInput.value = '';
+                        agentResponse(message);
+                    }
+                }
+            }
+        });
+
+        // --- Initialization ---
+        function init() {
+            addMessage("Hi there! I'm KiddoBot, your friendly talking agent. I can understand your voice and we can chat! Ask me anything, or just say hello!", 'agent');
+            textInput.disabled = false;
+            sendButton.disabled = false;
+            startSpeechRecognition();
+        }
+
+        init();
+    </script>
+</body>
+</html>
