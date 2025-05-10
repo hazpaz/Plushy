@@ -326,100 +326,155 @@
 
         // --- Speech Synthesis Functions (Text-to-Speech) ---
         
-        /**
-         * Speaks the given text using the Web Speech API.
-         * @param {string} text - The text to speak.
-         */
-        function speakText(text) {
-            if (!isSpeechEnabled) return;
-            
-            // Stop any current speech
-            if (speechSynthesis.speaking) {
-                speechSynthesis.cancel();
-            }
-            
-            // Create a new speech utterance
-            const utterance = new SpeechSynthesisUtterance(text);
-            
-            // Configure speech settings for a cute, non-scary voice
-            utterance.rate = 0.9;     // Slightly slower speed (0.1 to 10)
-            utterance.pitch = 1.4;    // Higher pitch for a younger voice (0 to 2)
-            utterance.volume = 0.9;   // Slightly lower volume to avoid harshness (0 to 1)
-            
-            // Use a child-like voice if available
-            const voices = speechSynthesis.getVoices();
-            console.log("Available voices:", voices.map(v => `${v.name} (${v.lang})`));
-            
-            // First try to find specifically cute/kid voices
-            let preferredVoices = voices.filter(voice => 
-                (voice.name.toLowerCase().includes('kid') || 
-                voice.name.toLowerCase().includes('child') ||
-                voice.name.toLowerCase().includes('junior') ||
-                voice.name.toLowerCase().includes('tiny') ||
-                voice.name.toLowerCase().includes('small') ||
-                voice.name.toLowerCase().includes('female')) &&
-                !voice.name.toLowerCase().includes('google')  // Avoid Google US English which can sound robotic
-            );
-            
-            // If no kid-specific voices found, prefer female voices which tend to be gentler
-            if (preferredVoices.length === 0) {
-                preferredVoices = voices.filter(voice => 
-                    voice.name.toLowerCase().includes('female') || 
-                    voice.name.toLowerCase().includes('girl') ||
-                    voice.name.toLowerCase().includes('woman') ||
-                    voice.name.includes('Samantha') ||
-                    voice.name.includes('Tessa') ||
-                    voice.name.includes('Victoria')
-                );
-            }
-            
-            // If still no luck, try these specific voice names that are often good
-            if (preferredVoices.length === 0) {
-                const goodVoiceNames = ['Samantha', 'Karen', 'Tessa', 'Victoria', 'Alex', 'Moira', 'Fiona'];
-                preferredVoices = voices.filter(voice => 
-                    goodVoiceNames.some(name => voice.name.includes(name))
-                );
-            }
-            
-            if (preferredVoices.length > 0) {
-                utterance.voice = preferredVoices[0];
-                console.log("Selected voice:", preferredVoices[0].name);
-            }
-            
-            // Track current utterance
-            currentUtterance = utterance;
-            
-            // Event handlers
-            utterance.onstart = () => {
-                const talkingInterval = animateMouth(true);
-                utterance._mouthAnimation = talkingInterval;
-            };
-            
-            utterance.onend = () => {
-                if (utterance._mouthAnimation) {
-                    clearInterval(utterance._mouthAnimation);
-                }
-                animateMouth(false);
-                
-                // Resume speech recognition after speaking if needed
-                if (speechRecognition) {
-                    setTimeout(() => {
-                        startSpeechRecognition();
-                    }, 500);
-                }
-            };
-            
-            utterance.onerror = (event) => {
-                console.error("Speech synthesis error:", event);
-                if (utterance._mouthAnimation) {
-                    clearInterval(utterance._mouthAnimation);
-                }
-                animateMouth(false);
-            };
-            
-            // Start speaking
-            speechSynthesis.speak(utterance);
+        // Find this function in the code and replace it with this updated version:
+
+/**
+ * Speaks the given text using the Web Speech API.
+ * @param {string} text - The text to speak.
+ */
+function speakText(text) {
+    if (!isSpeechEnabled) return;
+    
+    // Stop any current speech
+    if (speechSynthesis.speaking) {
+        speechSynthesis.cancel();
+    }
+    
+    // Create a new speech utterance
+    const utterance = new SpeechSynthesisUtterance(text);
+    
+    // Configure speech settings for a sweet lady voice
+    utterance.rate = 0.95;     // Slightly slower speed for clarity
+    utterance.pitch = 1.2;     // Higher pitch for female voice (0 to 2)
+    utterance.volume = 0.9;    // Good volume level (0 to 1)
+    
+    // Get available voices
+    const voices = speechSynthesis.getVoices();
+    console.log("Available voices:", voices.map(v => `${v.name} (${v.lang})`));
+    
+    // Prioritize American female voices (in order of preference)
+    const preferredVoiceNames = [
+        'Samantha',           // iOS/macOS (American female)
+        'Google US English',  // Chrome (American female)
+        'Microsoft Zira',     // Windows (American female)
+        'Karen',              // macOS (Australian but sweet)
+        'Victoria',           // macOS/iOS (American female)
+        'Siri Female',        // Some browsers (American female)
+        'en-US-Standard-F',   // Some browsers (American female)
+        'en-US-Standard-E'    // Some browsers (American female)
+    ];
+    
+    // First try to find American English female voices
+    let preferredVoices = voices.filter(voice => 
+        (voice.lang === 'en-US' || voice.lang.startsWith('en-US')) && 
+        (preferredVoiceNames.some(name => voice.name.includes(name)) ||
+         voice.name.toLowerCase().includes('female') ||
+         voice.name.toLowerCase().includes('woman'))
+    );
+    
+    // If no American voices found, try any English female voices
+    if (preferredVoices.length === 0) {
+        preferredVoices = voices.filter(voice => 
+            voice.lang.startsWith('en') && 
+            (preferredVoiceNames.some(name => voice.name.includes(name)) ||
+             voice.name.toLowerCase().includes('female') ||
+             voice.name.toLowerCase().includes('woman'))
+        );
+    }
+    
+    // If still no luck, try these specific voice names
+    if (preferredVoices.length === 0) {
+        preferredVoices = voices.filter(voice => 
+            preferredVoiceNames.some(name => voice.name.includes(name))
+        );
+    }
+    
+    // If we found a preferred voice, use it
+    if (preferredVoices.length > 0) {
+        utterance.voice = preferredVoices[0];
+        console.log("Selected voice:", preferredVoices[0].name);
+    } else {
+        // Fallback: find any voice that seems American and female
+        const fallbackVoices = voices.filter(voice => 
+            voice.lang === 'en-US' || voice.lang.startsWith('en-US')
+        );
+        if (fallbackVoices.length > 0) {
+            utterance.voice = fallbackVoices[0];
+            console.log("Fallback voice:", fallbackVoices[0].name);
         }
+    }
+    
+    // Track current utterance
+    currentUtterance = utterance;
+    
+    // Event handlers
+    utterance.onstart = () => {
+        const talkingInterval = animateMouth(true);
+        utterance._mouthAnimation = talkingInterval;
+    };
+    
+    utterance.onend = () => {
+        if (utterance._mouthAnimation) {
+            clearInterval(utterance._mouthAnimation);
+        }
+        animateMouth(false);
+        
+        // Resume speech recognition after speaking if needed
+        if (speechRecognition) {
+            setTimeout(() => {
+                startSpeechRecognition();
+            }, 500);
+        }
+    };
+    
+    utterance.onerror = (event) => {
+        console.error("Speech synthesis error:", event);
+        if (utterance._mouthAnimation) {
+            clearInterval(utterance._mouthAnimation);
+        }
+        animateMouth(false);
+    };
+    
+    // Start speaking
+    speechSynthesis.speak(utterance);
+}
+
+// Also add this code to the initSpeechSynthesis function to improve voice loading
+function initSpeechSynthesis() {
+    // Function to log available voices and store them
+    const checkVoices = () => {
+        const voices = speechSynthesis.getVoices();
+        console.log("Available voices:", voices.map(v => `${v.name} (${v.lang})`));
+        
+        // Try a test utterance to warm up the speech system
+        const testUtterance = new SpeechSynthesisUtterance("Hello");
+        testUtterance.volume = 0;  // Silent test
+        testUtterance.onend = () => {
+            console.log("Speech synthesis system initialized");
+        };
+        speechSynthesis.speak(testUtterance);
+    };
+    
+    // Chrome loads voices asynchronously
+    if (speechSynthesis.onvoiceschanged !== undefined) {
+        speechSynthesis.onvoiceschanged = checkVoices;
+    }
+    
+    // Load voices immediately for other browsers
+    checkVoices();
+    
+    // Force browsers to preload voices
+    setTimeout(() => {
+        speechSynthesis.getVoices();
+    }, 100);
+    
+    // Safari on iOS sometimes needs a user interaction to initialize audio
+    document.addEventListener('click', () => {
+        const silentUtterance = new SpeechSynthesisUtterance(" ");
+        silentUtterance.volume = 0;
+        speechSynthesis.speak(silentUtterance);
+    }, { once: true });
+}
         
         // --- Robot Animation Functions ---
         function animateMouth(speaking) {
