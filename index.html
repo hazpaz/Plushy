@@ -242,6 +242,34 @@
             clear: both;
             display: table;
         }
+        
+        .voice-controls {
+            display: flex;
+            justify-content: center;
+            padding: 0.5rem;
+            gap: 1rem;
+        }
+        
+        .toggle-button {
+            background-color: #8b5a2b;
+            color: #fff8e1;
+            border: none;
+            border-radius: 1rem;
+            padding: 0.5rem 1rem;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .toggle-button:hover {
+            background-color: #654321;
+            transform: scale(1.05);
+        }
+        
+        .toggle-button.active {
+            background-color: #4b2e0e;
+            box-shadow: inset 0 0 5px rgba(0,0,0,0.5);
+        }
     </style>
 </head>
 <body class="min-h-screen">
@@ -255,6 +283,11 @@
                 <div class="robot-eye left"></div>
                 <div class="robot-eye right"></div>
                 <div class="robot-mouth"></div>
+            </div>
+            
+            <div class="voice-controls">
+                <button id="toggle-voice" class="toggle-button active">Voice On</button>
+                <button id="stop-speaking" class="toggle-button">Stop Speaking</button>
             </div>
             
             <div class="chat-messages" id="chat-messages">
@@ -278,13 +311,88 @@
         const audioVisualizer = document.getElementById('audio-visualizer');
         const statusIndicator = document.getElementById('status');
         const robotMouth = document.querySelector('.robot-mouth');
+        const toggleVoiceButton = document.getElementById('toggle-voice');
+        const stopSpeakingButton = document.getElementById('stop-speaking');
 
         let isRecording = false;
         let mediaRecorder;
         let audioChunks = [];
         let speechRecognition;
         let previousResponse = "";
+        let isSpeechEnabled = true;
+        let speechSynthesis = window.speechSynthesis;
+        let currentUtterance = null;
 
+        // --- Speech Synthesis Functions (Text-to-Speech) ---
+        
+        /**
+         * Speaks the given text using the Web Speech API.
+         * @param {string} text - The text to speak.
+         */
+        function speakText(text) {
+            if (!isSpeechEnabled) return;
+            
+            // Stop any current speech
+            if (speechSynthesis.speaking) {
+                speechSynthesis.cancel();
+            }
+            
+            // Create a new speech utterance
+            const utterance = new SpeechSynthesisUtterance(text);
+            
+            // Configure speech settings
+            utterance.rate = 1.0;  // Speed (0.1 to 10)
+            utterance.pitch = 1.2; // Pitch (0 to 2)
+            utterance.volume = 1.0; // Volume (0 to 1)
+            
+            // Use a child-like voice if available
+            const voices = speechSynthesis.getVoices();
+            const preferredVoices = voices.filter(voice => 
+                voice.name.toLowerCase().includes('kid') || 
+                voice.name.toLowerCase().includes('child') ||
+                voice.name.toLowerCase().includes('junior') ||
+                voice.name.toLowerCase().includes('female')
+            );
+            
+            if (preferredVoices.length > 0) {
+                utterance.voice = preferredVoices[0];
+            }
+            
+            // Track current utterance
+            currentUtterance = utterance;
+            
+            // Event handlers
+            utterance.onstart = () => {
+                const talkingInterval = animateMouth(true);
+                utterance._mouthAnimation = talkingInterval;
+            };
+            
+            utterance.onend = () => {
+                if (utterance._mouthAnimation) {
+                    clearInterval(utterance._mouthAnimation);
+                }
+                animateMouth(false);
+                
+                // Resume speech recognition after speaking if needed
+                if (speechRecognition) {
+                    setTimeout(() => {
+                        startSpeechRecognition();
+                    }, 500);
+                }
+            };
+            
+            utterance.onerror = (event) => {
+                console.error("Speech synthesis error:", event);
+                if (utterance._mouthAnimation) {
+                    clearInterval(utterance._mouthAnimation);
+                }
+                animateMouth(false);
+            };
+            
+            // Start speaking
+            speechSynthesis.speak(utterance);
+        }
+        
         // --- Robot Animation Functions ---
         function animateMouth(speaking) {
             if (speaking) {
@@ -342,13 +450,13 @@
             // Scroll to bottom
             chatMessages.scrollTop = chatMessages.scrollHeight;
             
-            // Animate robot mouth if it's the agent speaking
+            // If it's the agent speaking and speech is enabled, use text-to-speech
             if (sender === 'agent') {
-                const talkingInterval = animateMouth(true);
-                setTimeout(() => {
-                    clearInterval(talkingInterval);
-                    animateMouth(false);
-                }, 1000 + (message.length * 50)); // Duration based on message length
+                if (speechRecognition && speechRecognition.state === 'active') {
+                    stopSpeechRecognition();
+                }
+                
+                speakText(message);
             }
         }
 
@@ -398,9 +506,6 @@
                 statusIndicator.textContent = "";
                 addMessage(response, 'agent');
                 previousResponse = response;
-                if (speechRecognition) {
-                    startSpeechRecognition();
-                }
             }, 1000);
         }
 
@@ -499,6 +604,39 @@
 
         // --- Event Listeners ---
 
+        // Toggle voice on/off
+        toggleVoiceButton.addEventListener('click', () => {
+            isSpeechEnabled = !isSpeechEnabled;
+            toggleVoiceButton.textContent = isSpeechEnabled ? "Voice On" : "Voice Off";
+            toggleVoiceButton.classList.toggle('active', isSpeechEnabled);
+            
+            if (!isSpeechEnabled && speechSynthesis.speaking) {
+                speechSynthesis.cancel();
+                if (currentUtterance && currentUtterance._mouthAnimation) {
+                    clearInterval(currentUtterance._mouthAnimation);
+                }
+                animateMouth(false);
+            }
+        });
+
+        // Stop speaking button
+        stopSpeakingButton.addEventListener('click', () => {
+            if (speechSynthesis.speaking) {
+                speechSynthesis.cancel();
+                if (currentUtterance && currentUtterance._mouthAnimation) {
+                    clearInterval(currentUtterance._mouthAnimation);
+                }
+                animateMouth(false);
+                
+                // Resume speech recognition after cancelling speech
+                if (speechRecognition) {
+                    setTimeout(() => {
+                        startSpeechRecognition();
+                    }, 500);
+                }
+            }
+        });
+
         // Send message on button click
         sendButton.addEventListener('click', () => {
             if (isRecording) {
@@ -537,13 +675,35 @@
             }
         });
 
+        // Initialize speech synthesis voices
+        function initSpeechSynthesis() {
+            // Chrome loads voices asynchronously
+            if (speechSynthesis.onvoiceschanged !== undefined) {
+                speechSynthesis.onvoiceschanged = () => {
+                    const voices = speechSynthesis.getVoices();
+                    console.log("Available voices:", voices.map(v => v.name));
+                };
+            }
+            
+            // Load voices immediately for other browsers
+            speechSynthesis.getVoices();
+        }
+
         // --- Initialization ---
         function init() {
+            // Initialize speech synthesis
+            initSpeechSynthesis();
+            
             setTimeout(() => {
-                addMessage("Hi there! I'm KiddoBot, your friendly talking buddy! I can understand your voice or you can type to me. What would you like to talk about today?", 'agent');
+                const welcomeMessage = "Hi there! I'm KiddoBot, your friendly talking buddy! I can understand your voice or you can type to me. What would you like to talk about today?";
+                addMessage(welcomeMessage, 'agent');
                 textInput.disabled = false;
                 sendButton.disabled = false;
-                startSpeechRecognition();
+                
+                // Delay speech recognition start until after welcome message is spoken
+                setTimeout(() => {
+                    startSpeechRecognition();
+                }, 1000);
             }, 500);
         }
 
