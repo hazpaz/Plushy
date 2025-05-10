@@ -3,103 +3,271 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Talking Kid Agent</title>
+    <title>KiddoBot - Your Friendly Talking Buddy</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Kalam:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&family=Comic+Neue:wght@400;700&display=swap" rel="stylesheet">
     <style>
         body {
-            font-family: 'Kalam', cursive;
+            font-family: 'Comic Neue', cursive;
+            background-color: #f8f1e9;
+            background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23e2d3c2' fill-opacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
         }
+        
         .chat-container {
             max-width: 800px;
             margin: auto;
-            border-radius: 1rem;
-            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
-            background-color: white; /* Added background color for better contrast */
+            border-radius: 1.5rem;
+            box-shadow: 0 10px 25px -5px rgba(101, 67, 33, 0.2), 0 8px 10px -6px rgba(101, 67, 33, 0.1);
+            background-color: #fffaf5;
+            border: 8px solid #8b5a2b;
+            overflow: hidden;
         }
+        
+        .header {
+            background-color: #8b5a2b;
+            color: #fff8e1;
+            padding: 1rem;
+            text-align: center;
+            font-family: 'Nunito', sans-serif;
+            font-weight: 700;
+            font-size: 1.75rem;
+            border-bottom: 4px dashed #654321;
+        }
+        
         .message-bubble {
             border-radius: 1.25rem;
             padding: 0.75rem 1.25rem;
-            margin-bottom: 0.5rem;
+            margin-bottom: 0.75rem;
             display: inline-block;
+            max-width: 80%;
             clear: both;
+            position: relative;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
         }
+        
         .user-message {
-            background-color: #dcf8c6; /* Light green for user messages */
-            color: #222;
+            background-color: #e6c9a8;
+            color: #4b2e0e;
             float: right;
-            border-top-right-radius: 0.25rem; /* Slightly less rounded on the right */
+            border-top-right-radius: 0.25rem;
+            margin-right: 10px;
         }
+        
+        .user-message:after {
+            content: "";
+            position: absolute;
+            right: -10px;
+            top: 0;
+            border: 10px solid transparent;
+            border-top-color: #e6c9a8;
+            border-right: 0;
+        }
+        
         .agent-message {
-            background-color: #e0f7fa; /* Light cyan for agent messages */
-            color: #222;
+            background-color: #a67c52;
+            color: #fff8e1;
             float: left;
-            border-top-left-radius: 0.25rem; /* Slightly less rounded on the left */
+            border-top-left-radius: 0.25rem;
+            margin-left: 10px;
         }
+        
+        .agent-message:after {
+            content: "";
+            position: absolute;
+            left: -10px;
+            top: 0;
+            border: 10px solid transparent;
+            border-top-color: #a67c52;
+            border-left: 0;
+        }
+        
         .input-area {
             display: flex;
             align-items: center;
-            padding: 0.75rem;
-            border-top: 1px solid #e0e0e0;
+            padding: 1rem;
+            background-color: #d7bc9d;
+            border-top: 4px dashed #8b5a2b;
         }
+        
         .text-input {
             flex: 1;
             border-radius: 1.25rem;
-            padding: 0.75rem;
-            border: 1px solid #e0e0e0;
+            padding: 0.75rem 1.25rem;
+            border: 3px solid #8b5a2b;
+            background-color: #fff8e1;
+            color: #4b2e0e;
             margin-right: 0.75rem;
-            font-family: 'Kalam', cursive; /* Use the fun font in input too */
+            font-size: 1.1rem;
+            transition: all 0.3s ease;
         }
+        
         .text-input:focus {
             outline: none;
-            border-color: #4fc3f7; /* Highlight on focus */
-            box-shadow: 0 0 0 3px rgba(64, 153, 255, 0.19);
+            border-color: #654321;
+            box-shadow: 0 0 0 4px rgba(139, 90, 43, 0.3);
+            transform: scale(1.01);
         }
+        
+        .text-input::placeholder {
+            color: #bc8a5f;
+        }
+        
         .send-button {
             border-radius: 1.25rem;
             padding: 0.75rem 1.5rem;
-            background-color: #4fc3f7; /* Cheerful blue */
-            color: white;
+            background-color: #8b5a2b;
+            color: #fff8e1;
             border: none;
+            font-weight: 700;
             cursor: pointer;
-            transition: background-color 0.3s ease;
-            font-family: 'Kalam', cursive; /* Use the fun font for the button */
+            transition: all 0.3s ease;
+            font-size: 1.1rem;
         }
+        
         .send-button:hover {
-            background-color: #45a7d3; /* Darker shade on hover */
+            background-color: #654321;
+            transform: scale(1.05);
         }
+        
         .send-button:disabled {
-            background-color: #b0bec5; /* Grey out when disabled */
+            background-color: #d7bc9d;
             cursor: not-allowed;
+            transform: none;
         }
+        
         #audio-visualizer {
             width: 100%;
-            height: 30px;
-            margin-top: 0.75rem;
-            border-radius: 0.75rem;
-            background-color: #f0f4c3; /* Light yellow for the visualizer */
-            display: none; /* Initially hidden */
+            height: 40px;
+            margin-top: 0.5rem;
+            margin-bottom: 0.5rem;
+            border-radius: 1rem;
+            background-color: #e6c9a8;
+            display: none;
+            position: relative;
+            overflow: hidden;
         }
+        
         .recording-animation {
-            border: 4px solid #f44336; /* Red recording border */
-            border-radius: 50%;
-            animation: pulse 2s infinite;
+            border: 4px solid #8b5a2b;
+            animation: pulse 2s infinite, colorChange 4s infinite alternate;
         }
+        
         @keyframes pulse {
             0% { transform: scale(1); }
-            50% { transform: scale(1.1); }
+            50% { transform: scale(1.02); }
             100% { transform: scale(1); }
+        }
+        
+        @keyframes colorChange {
+            0% { background-color: #e6c9a8; }
+            50% { background-color: #d7bc9d; }
+            100% { background-color: #e6c9a8; }
+        }
+        
+        .robot-avatar {
+            width: 80px;
+            height: 80px;
+            background-color: #8b5a2b;
+            border-radius: 50%;
+            margin: 1rem auto;
+            position: relative;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            border: 4px solid #654321;
+        }
+        
+        .robot-eye {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background-color: #fff8e1;
+            border-radius: 50%;
+            top: 20px;
+        }
+        
+        .robot-eye:after {
+            content: "";
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background-color: #4b2e0e;
+            border-radius: 50%;
+            top: 5px;
+            left: 5px;
+        }
+        
+        .robot-eye.left {
+            left: 15px;
+        }
+        
+        .robot-eye.right {
+            right: 15px;
+        }
+        
+        .robot-mouth {
+            position: absolute;
+            width: 40px;
+            height: 10px;
+            background-color: #fff8e1;
+            border-radius: 5px;
+            bottom: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        
+        .chat-messages {
+            padding: 1rem;
+            overflow-y: auto;
+            height: calc(100vh - 250px);
+            min-height: 300px;
+            background-color: #fffaf5;
+        }
+        
+        .status-indicator {
+            font-size: 0.9rem;
+            text-align: center;
+            color: #a67c52;
+            margin: 0.5rem 0;
+            font-style: italic;
+        }
+        
+        .time-stamp {
+            font-size: 0.7rem;
+            opacity: 0.7;
+            margin-top: 4px;
+            display: block;
+        }
+        
+        .clearfix::after {
+            content: "";
+            clear: both;
+            display: table;
         }
     </style>
 </head>
-<body class="bg-gradient-to-br from-yellow-100 to-pink-100 min-h-screen flex flex-col">
-    <div class="chat-container flex-grow flex flex-col">
-        <div class="chat-messages flex-grow p-4 overflow-y-auto" id="chat-messages">
+<body class="min-h-screen">
+    <div class="py-8 px-4">
+        <div class="chat-container">
+            <div class="header">
+                KiddoBot - Your Talking Friend
             </div>
-        <div id="audio-visualizer"></div>
-        <div class="input-area">
-            <input type="text" id="text-input" class="text-input" placeholder="Type your message..." disabled>
-            <button id="send-button" class="send-button" disabled>Send</button>
+            
+            <div class="robot-avatar">
+                <div class="robot-eye left"></div>
+                <div class="robot-eye right"></div>
+                <div class="robot-mouth"></div>
+            </div>
+            
+            <div class="chat-messages" id="chat-messages">
+                <!-- Messages will appear here -->
+            </div>
+            
+            <div id="status" class="status-indicator"></div>
+            <div id="audio-visualizer"></div>
+            
+            <div class="input-area">
+                <input type="text" id="text-input" class="text-input" placeholder="Type your message..." disabled>
+                <button id="send-button" class="send-button" disabled>Send</button>
+            </div>
         </div>
     </div>
 
@@ -108,6 +276,8 @@
         const textInput = document.getElementById('text-input');
         const sendButton = document.getElementById('send-button');
         const audioVisualizer = document.getElementById('audio-visualizer');
+        const statusIndicator = document.getElementById('status');
+        const robotMouth = document.querySelector('.robot-mouth');
 
         let isRecording = false;
         let mediaRecorder;
@@ -115,7 +285,33 @@
         let speechRecognition;
         let previousResponse = "";
 
+        // --- Robot Animation Functions ---
+        function animateMouth(speaking) {
+            if (speaking) {
+                // Simulate talking
+                robotMouth.style.transition = 'height 0.1s ease-in-out';
+                let talkingInterval = setInterval(() => {
+                    const height = Math.floor(Math.random() * 15) + 5;
+                    robotMouth.style.height = `${height}px`;
+                }, 150);
+                
+                return talkingInterval;
+            } else {
+                robotMouth.style.height = '10px';
+                robotMouth.style.transition = 'height 0.3s ease';
+            }
+        }
+
         // --- Helper Functions ---
+        function getCurrentTime() {
+            const now = new Date();
+            let hours = now.getHours();
+            const minutes = now.getMinutes().toString().padStart(2, '0');
+            const ampm = hours >= 12 ? 'PM' : 'AM';
+            hours = hours % 12;
+            hours = hours ? hours : 12; // Convert 0 to 12
+            return `${hours}:${minutes} ${ampm}`;
+        }
 
         /**
          * Adds a message to the chat interface.
@@ -125,9 +321,35 @@
         function addMessage(message, sender) {
             const messageElement = document.createElement('div');
             messageElement.classList.add('message-bubble', `${sender}-message`);
-            messageElement.textContent = message;
+            
+            // Main message text
+            const messageText = document.createElement('div');
+            messageText.textContent = message;
+            messageElement.appendChild(messageText);
+            
+            // Add timestamp
+            const timeStamp = document.createElement('span');
+            timeStamp.classList.add('time-stamp');
+            timeStamp.textContent = getCurrentTime();
+            messageElement.appendChild(timeStamp);
+            
+            // Add to chat container with a clearfix
+            const clearfix = document.createElement('div');
+            clearfix.classList.add('clearfix');
             chatMessages.appendChild(messageElement);
+            chatMessages.appendChild(clearfix);
+            
+            // Scroll to bottom
             chatMessages.scrollTop = chatMessages.scrollHeight;
+            
+            // Animate robot mouth if it's the agent speaking
+            if (sender === 'agent') {
+                const talkingInterval = animateMouth(true);
+                setTimeout(() => {
+                    clearInterval(talkingInterval);
+                    animateMouth(false);
+                }, 1000 + (message.length * 50)); // Duration based on message length
+            }
         }
 
         /**
@@ -135,6 +357,7 @@
          * @param {string} userInput - The user's input.
          */
         async function agentResponse(userInput) {
+            statusIndicator.textContent = "KiddoBot is thinking...";
             let response = "";
             
             try {
@@ -147,8 +370,6 @@
                     body: JSON.stringify({ message: userInput })
                 });
                 
-                console.log("API Response status:", apiResponse.status);
-                
                 if (!apiResponse.ok) {
                     const errorText = await apiResponse.text();
                     console.error(`API error (${apiResponse.status}):`, errorText);
@@ -157,7 +378,6 @@
                 
                 // Get the response as JSON directly
                 const data = await apiResponse.json();
-                console.log("Parsed API Response Data:", data);
                 
                 // Extract the response text 
                 if (data && data.message) {
@@ -175,6 +395,7 @@
 
             // Display the response with a slight delay
             setTimeout(() => {
+                statusIndicator.textContent = "";
                 addMessage(response, 'agent');
                 previousResponse = response;
                 if (speechRecognition) {
@@ -184,16 +405,19 @@
         }
 
         /**
-         * Placeholder function to make API responses kid-friendly.
-         * You will need to adapt this function to your specific needs
-         * and the nature of the API responses.
+         * Makes API responses kid-friendly.
          */
         function makeKidFriendly(text) {
-            //  Very basic example:  Replace adult vocabulary with simpler synonyms.
             text = text.replace(/adult/gi, "grown-up");
             text = text.replace(/complicated/gi, "tricky");
+            text = text.replace(/difficult/gi, "challenging");
             text = text.replace(/explain/gi, "tell me about");
-            //  Add more rules as needed.  Consider using a library for this.
+            text = text.replace(/uncertain/gi, "not sure");
+            text = text.replace(/unfortunate/gi, "not great");
+            text = text.replace(/nevertheless/gi, "still");
+            text = text.replace(/however/gi, "but");
+            text = text.replace(/therefore/gi, "so");
+            text = text.replace(/furthermore/gi, "also");
             return text;
         }
 
@@ -215,6 +439,7 @@
                     textInput.disabled = true;
                     audioVisualizer.style.display = 'block';
                     audioVisualizer.classList.add('recording-animation');
+                    statusIndicator.textContent = "I'm listening...";
                 };
 
                 speechRecognition.onresult = (event) => {
@@ -230,6 +455,7 @@
                     textInput.disabled = false;
                     audioVisualizer.style.display = 'none';
                     audioVisualizer.classList.remove('recording-animation');
+                    statusIndicator.textContent = "";
                 };
 
                 speechRecognition.onerror = (event) => {
@@ -240,7 +466,10 @@
                     textInput.disabled = false;
                     audioVisualizer.style.display = 'none';
                     audioVisualizer.classList.remove('recording-animation');
-                    alert("Sorry, I couldn't understand that. Please try again.");
+                    statusIndicator.textContent = "I couldn't hear you properly. Please try again.";
+                    setTimeout(() => {
+                        statusIndicator.textContent = "";
+                    }, 3000);
                 };
 
                 speechRecognition.start();
@@ -248,6 +477,7 @@
                 alert("Speech recognition is not supported in this browser.");
                 textInput.disabled = false;
                 sendButton.disabled = false;
+                statusIndicator.textContent = "Voice chat isn't available in this browser. You can still type!";
             }
         }
 
@@ -263,6 +493,7 @@
                 textInput.disabled = false;
                 audioVisualizer.style.display = 'none';
                 audioVisualizer.classList.remove('recording-animation');
+                statusIndicator.textContent = "";
             }
         }
 
@@ -298,12 +529,22 @@
             }
         });
 
+        // Focus on input when user starts typing
+        document.addEventListener('keydown', (event) => {
+            if (!isRecording && !textInput.disabled && 
+                event.key.length === 1 && !event.ctrlKey && !event.altKey && !event.metaKey) {
+                textInput.focus();
+            }
+        });
+
         // --- Initialization ---
         function init() {
-            addMessage("Hi there! I'm KiddoBot, your friendly talking agent. I can understand your voice and we can chat! Ask me anything, or just say hello!", 'agent');
-            textInput.disabled = false;
-            sendButton.disabled = false;
-            startSpeechRecognition();
+            setTimeout(() => {
+                addMessage("Hi there! I'm KiddoBot, your friendly talking buddy! I can understand your voice or you can type to me. What would you like to talk about today?", 'agent');
+                textInput.disabled = false;
+                sendButton.disabled = false;
+                startSpeechRecognition();
+            }, 500);
         }
 
         init();
