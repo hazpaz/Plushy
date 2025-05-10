@@ -114,7 +114,6 @@
         let audioChunks = [];
         let speechRecognition;
         let previousResponse = "";
-        const apiKey = process.Env.API_KEY; // **Replace with your actual API key**
 
         // --- Helper Functions ---
 
@@ -132,79 +131,59 @@
         }
 
         /**
-         * Handles the agent's response using an API.
+         * Handles the agent's response using the backend API.
          * @param {string} userInput - The user's input.
          */
-/**
- * Handles the agent's response using the Gemini API.
- * @param {string} userInput - The user's input.
- */
+        async function agentResponse(userInput) {
+            let response = "";
+            
+            try {
+                // Use our own backend instead of directly calling Gemini API
+                const apiResponse = await fetch('/api/gemini', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ message: userInput })
+                });
+                
+                console.log("API Response status:", apiResponse.status);
+                
+                if (!apiResponse.ok) {
+                    const errorText = await apiResponse.text();
+                    console.error(`API error (${apiResponse.status}):`, errorText);
+                    throw new Error(`API request failed with status: ${apiResponse.status}`);
+                }
+                
+                // Get the response as JSON directly
+                const data = await apiResponse.json();
+                console.log("Parsed API Response Data:", data);
+                
+                // Extract the response text 
+                if (data && data.message) {
+                    response = data.message;
+                    // Make sure the response is appropriate for kids
+                    response = makeKidFriendly(response);
+                } else {
+                    console.error("Response doesn't match expected structure:", data);
+                    response = "I received a response but couldn't understand it properly.";
+                }
+            } catch (error) {
+                console.error("Error fetching or processing API response:", error);
+                response = "I'm having a little trouble understanding right now. Can you try again?";
+            }
 
- async function agentResponse(userInput) {
-    let response = "";
-    
-    try {
-        // Using the direct Gemini API URL with your API key
-        // I see your API key in the error message - make sure to secure this in production!
-        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
-        
-        // Create the data structure that the Gemini API expects
-        const requestData = {
-            contents: [{
-                parts: [{ text: userInput }]
-            }]
-        };
-        
-        console.log("Sending data to Gemini API:", requestData);
-        
-        // The Gemini API expects JSON format with application/json content type
-        const apiResponse = await fetch(apiUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(requestData)
-        });
-        
-        console.log("API Response status:", apiResponse.status);
-        
-        if (!apiResponse.ok) {
-            const errorText = await apiResponse.text();
-            console.error(`API error (${apiResponse.status}):`, errorText);
-            throw new Error(`API request failed with status: ${apiResponse.status}`);
+            // Display the response with a slight delay
+            setTimeout(() => {
+                addMessage(response, 'agent');
+                previousResponse = response;
+                if (speechRecognition) {
+                    startSpeechRecognition();
+                }
+            }, 1000);
         }
-        
-        // Get the response as JSON directly
-        const data = await apiResponse.json();
-        console.log("Parsed API Response Data:", data);
-        
-        // Extract the response text based on Gemini API structure
-        if (data && data.candidates && data.candidates[0]?.content?.parts?.[0]?.text) {
-            response = data.candidates[0].content.parts[0].text;
-        } else {
-            console.error("Response doesn't match expected structure:", data);
-            response = "I received a response but couldn't understand it properly.";
-        }
-        
-        // Make sure the response is appropriate for kids
-        response = makeKidFriendly(response);
 
-    } catch (error) {
-        console.error("Error fetching or processing API response:", error);
-        response = "I'm having a little trouble understanding right now. Can you try again?";
-    }
-
-    // Display the response with a slight delay
-    setTimeout(() => {
-        addMessage(response, 'agent');
-        previousResponse = response;
-        if (speechRecognition) {
-            startSpeechRecognition();
-        }
-    }, 1000);
-}
-
-/**
+        /**
          * Placeholder function to make API responses kid-friendly.
          * You will need to adapt this function to your specific needs
          * and the nature of the API responses.
@@ -260,6 +239,7 @@
                     sendButton.disabled = false;
                     textInput.disabled = false;
                     audioVisualizer.style.display = 'none';
+                    audioVisualizer.classList.remove('recording-animation');
                     alert("Sorry, I couldn't understand that. Please try again.");
                 };
 
