@@ -515,7 +515,7 @@
             try {
                 // Direct API call to Gemini API
                 const apiKey = process.env.API_KEY; // Replace with your actual API key in production
-                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`;
+                const apiUrl = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-pro:generateContent?key=${apiKey}`;
                 
                 // Create the request payload
                 const requestData = {
