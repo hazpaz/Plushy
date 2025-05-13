@@ -315,6 +315,8 @@
         const toggleVoiceButton = document.getElementById('toggle-voice');
         const stopSpeakingButton = document.getElementById('stop-speaking');
 
+        let plushyName = null;
+        let userName = null;
         let isRecording = false;
         let mediaRecorder;
         let audioChunks = [];
@@ -509,68 +511,68 @@
          * @param {string} userInput - The user's input.
          */
         async function agentResponse(userInput) {
-            statusIndicator.textContent = "KiddoBot is thinking...";
-            let response = "";
-            
-            try {
-                // Direct API call to Gemini API
-                const apiKey = 'AIzaSyBsCGn5ykZS3vDukZm6PQbzl9oh49BVScY'; // Replace with your actual API key in production
-                const apiUrl = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-pro:generateContent?key=${apiKey}`;
-                
-                // Create the request payload
-                const requestData = {
-                    contents: [{
-                        parts: [{
-                            text: `You are KiddoBot, a friendly AI assistant for children aged 5-12. 
-                            Use simple language, be enthusiastic, patient, educational and always kid-friendly. 
-                            Keep responses concise (2-4 sentences max) and use analogies children understand.
-                            User message: "${userInput}"`
-                        }]
-                    }]
-                };
-                
-                console.log("Sending request to API...");
-                
-                // Make the API request
-                const apiResponse = await fetch(apiUrl, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(requestData)
-                });
-                
-                if (!apiResponse.ok) {
-                    const errorText = await apiResponse.text();
-                    console.error(`API error (${apiResponse.status}):`, errorText);
-                    throw new Error(`API request failed with status: ${apiResponse.status}`);
-                }
-                
-                // Parse the response
-                const data = await apiResponse.json();
-                console.log("API response:", data);
-                
-                // Extract the text from the response
-                if (data && data.candidates && data.candidates[0]?.content?.parts && data.candidates[0].content.parts.length > 0) {
-                    response = data.candidates[0].content.parts[0].text;
-                    // Make sure the response is appropriate for kids
-                    response = makeKidFriendly(response);
-                } else {
-                    console.error("Response doesn't match expected structure:", data);
-                    response = "I'm not sure what to say about that. Can you ask me something else?";
-                }
-            } catch (error) {
-                console.error("Error fetching or processing API response:", error);
-                response = "I'm having a little trouble thinking right now. Can you ask me again?";
-            }
+    statusIndicator.textContent = "Thinking...";
 
-            // Display the response with a slight delay
-            setTimeout(() => {
-                statusIndicator.textContent = "";
-                addMessage(response, 'agent');
-                previousResponse = response;
-            }, 1000);
-        }
+    // Reset command
+    if (userInput.toLowerCase().includes("reset plushy")) {
+        plushyName = null;
+        userName = null;
+        addMessage("Hi there! I’m your cuddly friend! What would you like to call me?", 'agent');
+        return;
+    }
+
+    // Ask for plushy's name
+    if (!plushyName) {
+        plushyName = userInput;
+        addMessage(`It's so nice to meet you, ${plushyName}! What's your name, my friend?`, 'agent');
+        return;
+    }
+
+    // Ask for user's name
+    if (!userName) {
+        userName = userInput;
+        addMessage(`It's so nice to meet you, ${userName}! I'm so happy to be your friend! What shall we do together today?`, 'agent');
+        return;
+    }
+
+    let response = "";
+    try {
+        const apiKey = "YOUR_API_KEY";
+        const apiUrl = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-pro:generateContent?key=${apiKey}`;
+
+        const prompt = `
+You are a virtual talking plushy friend named ${plushyName}, designed to interact with a child named ${userName} (aged 5–14). 
+Always be cheerful, curious, kind, and encouraging. Speak simply. Avoid any scary, sad, or grown-up topics.
+
+User: "${userInput}"
+`;
+
+        const requestData = {
+            contents: [{
+                parts: [{ text: prompt }]
+            }]
+        };
+
+        const apiResponse = await fetch(apiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(requestData)
+        });
+
+        const data = await apiResponse.json();
+        response = data?.candidates?.[0]?.content?.parts?.[0]?.text || 
+                   "I'm not sure what to say... but we can talk about something fun! What's your favorite animal?";
+    } catch (e) {
+        console.error("API Error:", e);
+        response = "Oops! I'm having a little trouble thinking. Can you say that again?";
+    }
+
+    setTimeout(() => {
+        statusIndicator.textContent = "";
+        addMessage(response, 'agent');
+        previousResponse = response;
+    }, 1000);
+}
 
         /**
          * Makes API responses kid-friendly.
@@ -902,7 +904,7 @@
             initSpeechSynthesis();
             
             setTimeout(() => {
-                const welcomeMessage = "Hi there! I'm KiddoBot, your friendly talking buddy! I can understand your voice or you can type to me. What would you like to talk about today?";
+                const welcomeMessage = "Hi there! I’m your cuddly friend! What would you like to call me?";
                 addMessage(welcomeMessage, 'agent');
                 textInput.disabled = false;
                 sendButton.disabled = false;
