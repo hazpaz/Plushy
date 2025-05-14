@@ -595,156 +595,73 @@ User: "${userInput}"
         /**
          * Initializes and starts speech recognition.
          */
-        function startSpeechRecognition() {
-            // Check for standard and webkit implementations
-            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-            
-            if (SpeechRecognition) {
-                // Clean up any previous instance
-                if (speechRecognition) {
-                    try {
-                        speechRecognition.stop();
-                    } catch (e) {
-                        console.log("Cleaning up previous recognition instance");
-                    }
-                }
-                
-                speechRecognition = new SpeechRecognition();
-                
-                // Configure for better recognition
-                speechRecognition.continuous = true;       // Keep listening until manually stopped
-                speechRecognition.lang = 'en-US';          // Set language
-                speechRecognition.interimResults = true;   // Get results as they come in
-                speechRecognition.maxAlternatives = 3;     // Get multiple interpretations
-                
-                let finalTranscript = '';
-                let isProcessingResult = false;
-                
-                speechRecognition.onstart = () => {
-                    isRecording = true;
-                    sendButton.textContent = "Listening...";
-                    sendButton.disabled = true;
-                    textInput.disabled = true;
-                    audioVisualizer.style.display = 'block';
-                    audioVisualizer.classList.add('recording-animation');
-                    statusIndicator.textContent = "I'm listening...";
-                    finalTranscript = '';
-                };
+function startSpeechRecognition() {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+        alert("Speech recognition not supported.");
+        return;
+    }
 
-                speechRecognition.onresult = (event) => {
-                    // Don't process new results if we're already processing one
-                    if (isProcessingResult) return;
-                    
-                    let interimTranscript = '';
-                    
-                    // Process all results, adding confident final results to our transcript
-                    for (let i = event.resultIndex; i < event.results.length; i++) {
-                        const transcript = event.results[i][0].transcript;
-                        
-                        if (event.results[i].isFinal) {
-                            finalTranscript += transcript + ' ';
-                        } else {
-                            interimTranscript += transcript;
-                        }
-                    }
-                    
-                    // Update status with interim results
-                    if (interimTranscript) {
-                        statusIndicator.textContent = `I heard: ${interimTranscript}`;
-                    }
-                    
-                    // If we have a final transcript with reasonable length, process it
-                    if (finalTranscript && finalTranscript.length > 2 && !isProcessingResult) {
-                        // Prevent multiple processing of the same input
-                        isProcessingResult = true;
-                        
-                        // Use the best transcript
-                        const cleanTranscript = finalTranscript.trim();
-                        console.log("Final transcript:", cleanTranscript);
-                        
-                        // Stop recognition while processing
-                        speechRecognition.stop();
-                        
-                        // Process the message
-                        addMessage(cleanTranscript, 'user');
-                        agentResponse(cleanTranscript);
-                        
-                        // Reset
-                        finalTranscript = '';
-                        interimTranscript = '';
-                    }
-                };
+    if (speechRecognition) {
+        speechRecognition.stop();
+    }
 
-                speechRecognition.onend = () => {
-                    // Only reset if we weren't in the middle of processing a result
-                    if (!isProcessingResult) {
-                        isRecording = false;
-                        sendButton.textContent = "Send";
-                        sendButton.disabled = false;
-                        textInput.disabled = false;
-                        audioVisualizer.style.display = 'none';
-                        audioVisualizer.classList.remove('recording-animation');
-                        statusIndicator.textContent = "";
-                        
-                        // Restart automatically if not processing a result
-                        // This makes the listening more continuous
-                        try {
-                            if (!speechSynthesis.speaking) {
-                                setTimeout(() => {
-                                    speechRecognition.start();
-                                }, 1000);
-                            }
-                        } catch (e) {
-                            console.error("Error restarting speech recognition:", e);
-                        }
-                    } else {
-                        // If we were processing, this is an expected stop
-                        isProcessingResult = false;
-                    }
-                };
+    speechRecognition = new SpeechRecognition();
+    speechRecognition.continuous = true;
+    speechRecognition.lang = 'en-US';
+    speechRecognition.interimResults = true;
+    speechRecognition.maxAlternatives = 3;
 
-                speechRecognition.onerror = (event) => {
-                    console.error("Speech Recognition Error:", event.error);
-                    
-                    // Handle specific errors
-                    if (event.error === 'no-speech') {
-                        // No speech detected - this is common and not a problem
-                        console.log("No speech detected");
-                        statusIndicator.textContent = "I'm waiting for you to say something...";
-                        setTimeout(() => statusIndicator.textContent = "", 2000);
-                    } else if (event.error === 'aborted') {
-                        // Recognition was aborted intentionally - not a problem
-                        console.log("Recognition aborted");
-                    } else {
-                        // Other errors - reset UI
-                        isRecording = false;
-                        sendButton.textContent = "Send";
-                        sendButton.disabled = false;
-                        textInput.disabled = false;
-                        audioVisualizer.style.display = 'none';
-                        audioVisualizer.classList.remove('recording-animation');
-                        statusIndicator.textContent = "I couldn't hear you properly. Please try again.";
-                        setTimeout(() => {
-                            statusIndicator.textContent = "";
-                        }, 3000);
-                    }
-                };
+    let transcriptBuffer = '';
+    let isProcessing = false;
 
-                try {
-                    speechRecognition.start();
-                } catch (e) {
-                    console.error("Error starting speech recognition:", e);
-                    alert("There was an error starting speech recognition. Please reload the page.");
-                    textInput.disabled = false;
-                    sendButton.disabled = false;
-                }
-            } else {
-                alert("Speech recognition is not supported in this browser.");
-                textInput.disabled = false;
-                sendButton.disabled = false;
-                statusIndicator.textContent = "Voice chat isn't available in this browser. You can still type!";
+    speechRecognition.onstart = () => {
+        isRecording = true;
+        statusIndicator.textContent = "I'm listening...";
+        audioVisualizer.style.display = 'block';
+        audioVisualizer.classList.add('recording-animation');
+    };
+
+    speechRecognition.onresult = (event) => {
+        let finalTranscript = '';
+
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+            if (event.results[i].isFinal) {
+                finalTranscript += event.results[i][0].transcript;
             }
         }
+
+        if (finalTranscript && !isProcessing) {
+            isProcessing = true;
+            speechRecognition.stop();  // Temporarily stop to process
+
+            const cleaned = finalTranscript.trim();
+            addMessage(cleaned, 'user');
+            agentResponse(cleaned).then(() => {
+                isProcessing = false;
+                setTimeout(() => speechRecognition.start(), 1000); // Restart listening
+            });
+        }
+    };
+
+    speechRecognition.onend = () => {
+        if (!isProcessing) {
+            setTimeout(() => speechRecognition.start(), 1000);
+        }
+    };
+
+    speechRecognition.onerror = (event) => {
+        console.error("Speech error:", event);
+        setTimeout(() => speechRecognition.start(), 1000);
+    };
+
+    try {
+        speechRecognition.start();
+    } catch (err) {
+        console.error("Speech recognition start error:", err);
+    }
+}
+
 
         /**
          * Stops speech recognition.
