@@ -598,69 +598,69 @@ User: "${userInput}"
 function startSpeechRecognition() {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
-        alert("Speech recognition not supported.");
+        statusIndicator.textContent = "Speech not supported in this browser. You can type instead!";
+        textInput.disabled = false;
+        sendButton.disabled = false;
         return;
     }
 
     if (speechRecognition) {
-        speechRecognition.stop();
+        try {
+            speechRecognition.stop();
+        } catch (e) {}
     }
 
     speechRecognition = new SpeechRecognition();
     speechRecognition.continuous = true;
     speechRecognition.lang = 'en-US';
-    speechRecognition.interimResults = true;
-    speechRecognition.maxAlternatives = 3;
+    speechRecognition.interimResults = false;
 
-    let transcriptBuffer = '';
     let isProcessing = false;
 
     speechRecognition.onstart = () => {
-        isRecording = true;
         statusIndicator.textContent = "I'm listening...";
         audioVisualizer.style.display = 'block';
         audioVisualizer.classList.add('recording-animation');
+        textInput.disabled = true;
+        sendButton.disabled = true;
     };
 
-    speechRecognition.onresult = (event) => {
-        let finalTranscript = '';
-
-        for (let i = event.resultIndex; i < event.results.length; ++i) {
-            if (event.results[i].isFinal) {
-                finalTranscript += event.results[i][0].transcript;
-            }
-        }
-
-        if (finalTranscript && !isProcessing) {
-            isProcessing = true;
-            speechRecognition.stop();  // Temporarily stop to process
-
-            const cleaned = finalTranscript.trim();
-            addMessage(cleaned, 'user');
-            agentResponse(cleaned).then(() => {
-                isProcessing = false;
-                setTimeout(() => speechRecognition.start(), 1000); // Restart listening
-            });
-        }
+    speechRecognition.onerror = (event) => {
+        console.error("Speech recognition error:", event);
+        statusIndicator.textContent = "Oops! I couldn't hear you. But you can type to me!";
+        textInput.disabled = false;
+        sendButton.disabled = false;
     };
 
     speechRecognition.onend = () => {
         if (!isProcessing) {
-            setTimeout(() => speechRecognition.start(), 1000);
+            setTimeout(() => speechRecognition.start(), 1000); // restart automatically
         }
     };
 
-    speechRecognition.onerror = (event) => {
-        console.error("Speech error:", event);
-        setTimeout(() => speechRecognition.start(), 1000);
+    speechRecognition.onresult = (event) => {
+        const transcript = event.results[event.results.length - 1][0].transcript.trim();
+        if (transcript && !isProcessing) {
+            isProcessing = true;
+            speechRecognition.stop(); // stop temporarily while processing
+            addMessage(transcript, "user");
+            agentResponse(transcript).then(() => {
+                isProcessing = false;
+                setTimeout(() => speechRecognition.start(), 1000);
+            });
+        }
     };
 
     try {
         speechRecognition.start();
     } catch (err) {
-        console.error("Speech recognition start error:", err);
+        console.error("Speech start failed:", err);
+        statusIndicator.textContent = "Speech not available. You can type instead.";
+        textInput.disabled = false;
+        sendButton.disabled = false;
     }
 }
+
 
 
         /**
