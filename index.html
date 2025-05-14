@@ -544,10 +544,11 @@ User: "${userInput}"
 `;
 
         const requestData = {
-            contents: [{
-                parts: [{ text: prompt }]
-            }]
-        };
+  contents: [{
+    role: "user",
+    parts: [{ text: prompt }]
+  }]
+};
 
         const apiResponse = await fetch(apiUrl, {
             method: 'POST',
