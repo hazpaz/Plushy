@@ -1,3 +1,5 @@
+Very new new new
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -321,7 +323,6 @@
         let mediaRecorder;
         let audioChunks = [];
         let speechRecognition;
-        let isSpeechRecognitionActive = false;
         let previousResponse = "";
         let isSpeechEnabled = true;
         let speechSynthesis = window.speechSynthesis;
@@ -415,13 +416,18 @@
             };
             
             utterance.onend = () => {
-  animateMouth(false);
-  setTimeout(() => {
-    if (!isSpeechRecognitionActive) {
-      startSpeechRecognition();
-    }
-  }, 500);
-};
+                if (utterance._mouthAnimation) {
+                    clearInterval(utterance._mouthAnimation);
+                }
+                animateMouth(false);
+                
+                // Resume speech recognition after speaking if needed
+                if (speechRecognition) {
+                    setTimeout(() => {
+                        startSpeechRecognition();
+                    }, 500);
+                }
+            };
             
             utterance.onerror = (event) => {
                 console.error("Speech synthesis error:", event);
@@ -544,11 +550,10 @@ User: "${userInput}"
 `;
 
         const requestData = {
-  contents: [{
-    role: "user",
-    parts: [{ text: prompt }]
-  }]
-};
+            contents: [{
+                parts: [{ text: prompt }]
+            }]
+        };
 
         const apiResponse = await fetch(apiUrl, {
             method: 'POST',
@@ -593,64 +598,70 @@ User: "${userInput}"
          * Initializes and starts speech recognition.
          */
 function startSpeechRecognition() {
-  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SpeechRecognition) return;
-
-  if (isSpeechRecognitionActive) {
-    console.warn("Speech recognition already running.");
-    return;
-  }
-
-  if (speechRecognition) {
-    try {
-      speechRecognition.stop(); // make sure previous one is cleared
-    } catch (e) {}
-  }
-
-  speechRecognition = new SpeechRecognition();
-  speechRecognition.continuous = true;
-  speechRecognition.lang = 'en-US';
-  speechRecognition.interimResults = false;
-
-  speechRecognition.onstart = () => {
-    isSpeechRecognitionActive = true;
-    statusIndicator.textContent = "I'm listening...";
-    audioVisualizer.style.display = 'block';
-    audioVisualizer.classList.add('recording-animation');
-  };
-
-  speechRecognition.onend = () => {
-    isSpeechRecognitionActive = false;
-
-    // Restart automatically
-    setTimeout(() => {
-      if (!isSpeechRecognitionActive) {
-        startSpeechRecognition();
-      }
-    }, 1000);
-  };
-
-  speechRecognition.onerror = (event) => {
-    console.error("Speech recognition error:", event);
-    isSpeechRecognitionActive = false;
-    statusIndicator.textContent = "Oops! You can also type to me!";
-  };
-
-  speechRecognition.onresult = (event) => {
-    const transcript = event.results[event.results.length - 1][0].transcript.trim();
-    if (transcript) {
-      speechRecognition.stop();  // Stop before responding
-      agentResponse(transcript); // Let the bot reply
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+        statusIndicator.textContent = "Speech not supported in this browser. You can type instead!";
+        textInput.disabled = false;
+        sendButton.disabled = false;
+        return;
     }
-  };
 
-  try {
-    speechRecognition.start();
-  } catch (err) {
-    console.error("Speech start failed:", err);
-  }
+    if (speechRecognition) {
+        try {
+            speechRecognition.stop();
+        } catch (e) {}
+    }
+
+    speechRecognition = new SpeechRecognition();
+    speechRecognition.continuous = true;
+    speechRecognition.lang = 'en-US';
+    speechRecognition.interimResults = false;
+
+    let isProcessing = false;
+
+    speechRecognition.onstart = () => {
+        statusIndicator.textContent = "I'm listening...";
+        audioVisualizer.style.display = 'block';
+        audioVisualizer.classList.add('recording-animation');
+        textInput.disabled = true;
+        sendButton.disabled = true;
+    };
+
+    speechRecognition.onerror = (event) => {
+        console.error("Speech recognition error:", event);
+        statusIndicator.textContent = "Oops! I couldn't hear you. But you can type to me!";
+        textInput.disabled = false;
+        sendButton.disabled = false;
+    };
+
+    speechRecognition.onend = () => {
+        if (!isProcessing) {
+            setTimeout(() => speechRecognition.start(), 1000); // restart automatically
+        }
+    };
+
+    speechRecognition.onresult = (event) => {
+        const transcript = event.results[event.results.length - 1][0].transcript.trim();
+        if (transcript && !isProcessing) {
+            isProcessing = true;
+            speechRecognition.stop(); // stop temporarily while processing
+            addMessage(transcript, "user");
+            agentResponse(transcript).then(() => {
+                isProcessing = false;
+                setTimeout(() => speechRecognition.start(), 1000);
+            });
+        }
+    };
+
+    try {
+        speechRecognition.start();
+    } catch (err) {
+        console.error("Speech start failed:", err);
+        statusIndicator.textContent = "Speech not available. You can type instead.";
+        textInput.disabled = false;
+        sendButton.disabled = false;
+    }
 }
-
 
 
 
@@ -828,5 +839,4 @@ function startSpeechRecognition() {
     </script>
 </body>
 </html>
-
 
